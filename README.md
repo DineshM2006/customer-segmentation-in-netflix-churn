@@ -1,4 +1,4 @@
-# 🏦 Customer Segmentation in Bank Churn using Hybrid Clustering
+# 🏦 Customer Segmentation in netflix Churn using Hybrid Clustering
 
 ## 📌 Overview
 
@@ -18,7 +18,7 @@ https://customer-segmentation-in-bank-churn-lvpllacq3stovdmjcffzmd.streamlit.app
 
 ## 🎯 Project Objectives
 
-* Analyze customer banking data.
+* Analyze customer netfix data.
 * Perform data preprocessing and feature engineering.
 * Apply Hybrid Clustering to identify customer segments.
 * Visualize customer groups.
