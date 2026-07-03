@@ -1,7 +1,10 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
+import os
 import pickle
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(page_title="Customer Segmentation (KMeans)", page_icon="🧠", layout="wide")
 
@@ -11,8 +14,6 @@ def load_kmeans_model(model_path: str):
     with open(model_path, "rb") as f:
         return pickle.load(f)
 
-
-import os
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "kmeans_model2.pkl")
 model = load_kmeans_model(MODEL_PATH)
@@ -30,55 +31,55 @@ feature_columns = [
     "devices_used",
 ]
 
-# Your request said “best 10 columns”. This notebook uses top-7 features,
-# so we keep exactly those 7.
+# The saved KMeans has n_features_in_ = 7 (based on the notebook training).
 if hasattr(model, "n_features_in_"):
     n = int(model.n_features_in_)
     feature_columns = feature_columns[:n]
 
 
-
 st.title("🧠 Customer Segmentation")
-st.caption("Loads your pre-trained KMeans model from `kmeans_model2.pkl` and performs manual predictions.")
+st.caption("Predicts the cluster using the saved KMeans model from `kmeans_model2.pkl`.")
 
-st.subheader("Input (manual) - select your values")
-
+st.subheader("Input (manual) - numeric values")
 st.info(
-    "All inputs are treated as numeric values. If your notebook used encoding/scaling, "
-    "make sure your saved model already contains the preprocessing pipeline.")
+    "Training notebook standardized the features using StandardScaler before fitting KMeans. "
+    "This app applies StandardScaler at prediction time."
+)
 
 cols = st.columns(2)
-
 user_values = {}
 for i, col in enumerate(feature_columns):
     with cols[i % 2]:
-        # numeric input - simple and robust for manual entry
-        default_val = 0.0
-        user_values[col] = st.number_input(f"{col}", value=float(default_val))
+        user_values[col] = st.number_input(col, value=0.0, step=1.0)
 
-input_df = pd.DataFrame([user_values])
+input_df = pd.DataFrame([user_values]).astype(float)
 
 st.subheader("Prediction")
 
 if st.button("Predict cluster", type="primary"):
     try:
-        # KMeans returns label array
-        pred = model.predict(input_df)[0]
+        # Match column order and notebook feature shape
+        input_df = input_df[feature_columns]
+
+        # Notebook did scaling before KMeans
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(input_df)
+
+        pred = model.predict(X_scaled)[0]
         st.success(f"Predicted Cluster: {int(pred)}")
 
-        # If model supports probabilities (rare for KMeans), show more.
+        # For KMeans, `transform` gives distances to centroids
         if hasattr(model, "transform"):
-            dists = model.transform(input_df)
-            best = int(np.argmin(dists, axis=1)[0])
-            st.write("Nearest cluster (min distance):", best)
+            dists = model.transform(X_scaled)
+            nearest = int(np.argmin(dists, axis=1)[0])
+            st.write("Nearest cluster (min distance):", nearest)
+
     except Exception as e:
-        st.error(
-            "Prediction failed. This usually means the model expects different column names/dtypes "
-            "than the ones provided."
-        )
+        st.error("Prediction failed. The model may expect a different feature shape/preprocessing.")
         st.exception(e)
 
-# Developer hint
+
 with st.expander("Debug: show inferred feature columns"):
     st.write(feature_columns)
+
 
